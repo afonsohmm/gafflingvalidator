@@ -18,8 +18,8 @@ Technical stuff
 ===============
 
 * CVS file format description: http://www.pirila.fi/ohj/vieohjeet/help/index.htm#page=3.2_Ilmoittautumisten_lukeminen_tiedostosta.htm
- * The project is AGPL licenced: free to use, free for further open source development, free for making money with the app, non-free for commercial closed source development.
- * Also for individual race, a simple "COMPETITORNUMBER;COURSEVARIATIONNAME" file format can be used. Also for individual race courses can simply be selected from list and compared manually.
+* The project is AGPL licenced: free to use, free for further open source development, free for making money with the app, non-free for commercial closed source development.
+* Also for individual race, a simple "COMPETITORNUMBER;COURSEVARIATIONNAME" file format can be used. Also for individual race courses can simply be selected from list and compared manually.
 
 Running locally/developing
 --------------------------
