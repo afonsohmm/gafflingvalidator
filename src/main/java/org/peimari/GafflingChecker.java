@@ -416,6 +416,7 @@ public class GafflingChecker extends UI {
 
 		Table legCountTable = new Table();
 		legCountTable.setSizeFull();
+		legCountTable.addItem("Runners:");
 
 		final HashMap<String, Integer> previousKeyToCount = new HashMap<String, Integer>();
 
@@ -434,6 +435,9 @@ public class GafflingChecker extends UI {
 						@Override
 						public Object generateCell(Table source, Object itemId,
 								Object columnId) {
+							if(itemId.equals("Runners:")) {
+								return courseTool.c.getNumberOfRunners();
+							}
 							String code = (String) itemId;
 							Integer count = courseTool.legKeyToCount.get(code);
 							if (count == null) {
@@ -497,13 +501,16 @@ public class GafflingChecker extends UI {
 				String no = null;
 
 				CourseVariation courseVariation = new CourseVariation();
-				String name = "R";
+				String name = "";
 				for (int i = 0; i < header.length; i++) {
 					String s = header[i];
 					if (s.startsWith("Rata")) {
 						String id = data[i];
 						if (!id.isEmpty()) {
-							name += "-" + id;
+							if (!name.isEmpty()) {
+								name += "-";
+							}
+							name += id;
 							CourseVariation variation = getCourseVariation(id);
 							if (!courseVariation.getCourseControl().isEmpty()) {
 								CourseControl o = new CourseControl();
@@ -521,19 +528,32 @@ public class GafflingChecker extends UI {
 						no = data[i];
 					}
 				}
-				Name n = new Name();
-				n.setvalue(name);
-				courseVariation.setName(n);
 
 				if (className == null) {
 					className = detectClassName(Integer.parseInt(no));
 				}
+				Name n = new Name();
+				if (className != null) {
+					// Simplyfy/shorten generate name by removing class prefixes
+					name = name.replace(className, "");
+				}
+				n.setvalue(name);
+				courseVariation.setName(n);
 				CompetitionClass compClass = nameToCompClass.get(className);
 				if (compClass == null) {
 					compClass = new CompetitionClass();
 					nameToCompClass.put(className, compClass);
 				}
-				compClass.put(name, courseVariation);
+				if (compClass.containsKey(name)) {
+					CourseVariation courseVariation2 = compClass.get(name);
+					courseVariation2.setNumberOfRunners(""
+							+ (Integer.parseInt(courseVariation2
+									.getNumberOfRunners()) + 1));
+				} else {
+					courseVariation.setNumberOfRunners("1");
+					compClass.put(name, courseVariation);
+				}
+				CourseVariation c = compClass.get(name);
 			}
 			for (String className : nameToCompClass.keySet()) {
 				compareCourses(className,
