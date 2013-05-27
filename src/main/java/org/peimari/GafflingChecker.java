@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,10 +31,13 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.EntityResolver;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import au.com.bytecode.opencsv.CSVReader;
 
+import com.vaadin.data.Item;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.event.Action;
 import com.vaadin.event.Action.Handler;
@@ -51,7 +55,6 @@ import com.vaadin.ui.Notification.Type;
 import com.vaadin.ui.OptionGroup;
 import com.vaadin.ui.ProgressIndicator;
 import com.vaadin.ui.Table;
-import com.vaadin.ui.Table.ColumnGenerator;
 import com.vaadin.ui.Table.RowHeaderMode;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.Upload;
@@ -111,7 +114,8 @@ public class GafflingChecker extends UI {
 				coursevariations = new ArrayList<CourseVariation>();
 				for (Course c : course) {
 					for (CourseVariation v : c.getCourseVariation()) {
-						if (v.getName() == null) {
+						if (v.getName() == null
+								|| v.getName().getvalue().trim().isEmpty()) {
 							// Generate name if does not exist (at least
 							// PurplePen)
 							Name name = new Name();
@@ -141,7 +145,19 @@ public class GafflingChecker extends UI {
 			SAXException, IOException {
 		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 		dbFactory.setIgnoringElementContentWhitespace(true);
+		dbFactory.setValidating(false);
 		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		dBuilder.setEntityResolver(new EntityResolver() {
+			@Override
+			public InputSource resolveEntity(String publicId, String systemId)
+					throws SAXException, IOException {
+				if (systemId.contains(".dtd")) {
+					return new InputSource(new StringReader(""));
+				} else {
+					return null;
+				}
+			}
+		});
 		Document doc = dBuilder.parse(new ByteArrayInputStream(bout
 				.toByteArray()));
 		return doc;
@@ -376,8 +392,9 @@ public class GafflingChecker extends UI {
 	}
 
 	protected CourseVariation getCourseVariation(String id) throws Exception {
+		id = id.trim();
 		for (CourseVariation cv : coursevariations) {
-			if (cv.getName().getvalue().equals(id)) {
+			if (cv.getName().getvalue().trim().equals(id)) {
 				return cv;
 			}
 		}
@@ -397,6 +414,7 @@ public class GafflingChecker extends UI {
 	 * @param classname
 	 * @param coursesToCompare
 	 */
+	@SuppressWarnings("unchecked")
 	private void compareCourses(String classname,
 			Collection<CourseVariation> coursesToCompare) {
 		if (coursesToCompare == null || coursesToCompare.size() < 2) {
@@ -415,45 +433,42 @@ public class GafflingChecker extends UI {
 		}
 
 		Table legCountTable = new Table();
+		legCountTable.setSortEnabled(true);
+		legCountTable.setColumnCollapsingAllowed(true);
 		legCountTable.setSizeFull();
-		legCountTable.addItem("Runners:");
-
-		final HashMap<String, Integer> previousKeyToCount = new HashMap<String, Integer>();
+		legCountTable.addContainerProperty("Status", String.class, "OK");
+		legCountTable.addContainerProperty("Runners", String.class, "?");
 
 		CourseComparisonTool prev = null;
 		for (final CourseComparisonTool courseTool : ctl) {
+			Item item = legCountTable
+					.addItem(courseTool.c.getName().getvalue());
+			for (Entry<String, Integer> e : courseTool.legKeyToCount.entrySet()) {
+				String key = e.getKey();
+				Integer count = e.getValue();
+				if (count == null) {
+					count = 0;
+				}
+				if(!legCountTable.getContainerPropertyIds().contains(key)) {
+					legCountTable.addContainerProperty(key, Integer.class, 0);
+					legCountTable.setColumnCollapsed(key, true);
+				}
+				item.getItemProperty(key).setValue(e.getValue());
+				if(prev != null && !count.equals(prev.legKeyToCount.get(key))) {
+					// By default show legs that have problems
+					legCountTable.setColumnCollapsed(key, false);
+				}
+			}
 			if (prev != null && !prev.equals(courseTool)) {
 				t = Type.ERROR_MESSAGE;
 				sb.append(prev.c.getName());
 				sb.append(" is not equal to ");
 				sb.append(courseTool.c.getName());
 				sb.append("<br/>");
+				item.getItemProperty("Status").setValue("!!PROBLEMS!!");
 			}
+			item.getItemProperty("Runners").setValue(courseTool.c.getNumberOfRunners());
 			prev = courseTool;
-			legCountTable.addGeneratedColumn(courseTool.c.getName(),
-					new ColumnGenerator() {
-						@Override
-						public Object generateCell(Table source, Object itemId,
-								Object columnId) {
-							if(itemId.equals("Runners:")) {
-								return courseTool.c.getNumberOfRunners();
-							}
-							String code = (String) itemId;
-							Integer count = courseTool.legKeyToCount.get(code);
-							if (count == null) {
-								count = 0;
-							}
-							Integer prev = previousKeyToCount.get(code);
-							if (prev != null && !prev.equals(count)) {
-								return new Label(
-										"<div style='background-color:red;'>"
-												+ count + "</div>",
-										ContentMode.HTML);
-							}
-							previousKeyToCount.put(code, count);
-							return count;
-						}
-					});
 		}
 
 		Window window = new Window("Analyzed " + coursesToCompare.size()
@@ -464,10 +479,6 @@ public class GafflingChecker extends UI {
 		window.setHeight("70%");
 		addWindow(window);
 
-		Set<String> keySet = prev.legKeyToCount.keySet();
-		for (String string : keySet) {
-			legCountTable.addItem(string);
-		}
 		legCountTable.setRowHeaderMode(RowHeaderMode.ID);
 
 		if (t == Type.ERROR_MESSAGE) {
@@ -553,14 +564,13 @@ public class GafflingChecker extends UI {
 					courseVariation.setNumberOfRunners("1");
 					compClass.put(name, courseVariation);
 				}
-				CourseVariation c = compClass.get(name);
 			}
 			for (String className : nameToCompClass.keySet()) {
 				compareCourses(className,
 						(nameToCompClass.get(className).values()));
 			}
 		} catch (Exception e) {
-			throw new RuntimeException(e);
+			Notification.show(e.getMessage(), Type.ERROR_MESSAGE);
 		}
 	}
 
