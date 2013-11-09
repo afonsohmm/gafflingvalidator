@@ -69,6 +69,7 @@ import com.vaadin.ui.Window;
  */
 @SuppressWarnings("serial")
 public class GafflingChecker extends UI {
+
 	private ByteArrayOutputStream bout;
 	private ArrayList<CourseVariation> coursevariations;
 	Table courseTable = new Table("Courses");
@@ -221,7 +222,6 @@ public class GafflingChecker extends UI {
 					(Character) separator.getValue(), '"');
 			try {
 				String[] data = csvReader.readNext();
-
 				try {
 					HashMap<String, CompetitionClass> nameToCompClass = new HashMap<String, CompetitionClass>();
 					// Consider as simple number-gaffling pairs for
@@ -366,7 +366,9 @@ public class GafflingChecker extends UI {
 
 		Upload gafflingUpload = createGafflingUpload();
 		csv.addComponent(gafflingUpload);
-		csv.setCaption("Analyze using gaffling CSV file. See Pirilä docs for details.");
+		csv.setCaption("Analyze using gaffling CSV file. See Pirilä docs for details. "
+				+ "Note, that relay format requires 'No;Rata-1;Rata-2;Rata-3;Rata-4' "
+				+ "style header.");
 		actions.addComponent(csv);
 		actions.setVisible(false);
 		layout.addComponent(actions);
@@ -449,12 +451,12 @@ public class GafflingChecker extends UI {
 				if (count == null) {
 					count = 0;
 				}
-				if(!legCountTable.getContainerPropertyIds().contains(key)) {
+				if (!legCountTable.getContainerPropertyIds().contains(key)) {
 					legCountTable.addContainerProperty(key, Integer.class, 0);
 					legCountTable.setColumnCollapsed(key, true);
 				}
 				item.getItemProperty(key).setValue(e.getValue());
-				if(prev != null && !count.equals(prev.legKeyToCount.get(key))) {
+				if (prev != null && !count.equals(prev.legKeyToCount.get(key))) {
 					// By default show legs that have problems
 					legCountTable.setColumnCollapsed(key, false);
 				}
@@ -467,7 +469,8 @@ public class GafflingChecker extends UI {
 				sb.append("<br/>");
 				item.getItemProperty("Status").setValue("!!PROBLEMS!!");
 			}
-			item.getItemProperty("Runners").setValue(courseTool.c.getNumberOfRunners());
+			item.getItemProperty("Runners").setValue(
+					courseTool.c.getNumberOfRunners());
 			prev = courseTool;
 		}
 
@@ -513,7 +516,7 @@ public class GafflingChecker extends UI {
 
 				CourseVariation courseVariation = new CourseVariation();
 				String name = "";
-				for (int i = 0; i < header.length; i++) {
+				for (int i = 0; i < data.length; i++) {
 					String s = header[i];
 					if (s.startsWith("Rata")) {
 						String id = data[i];
@@ -570,7 +573,10 @@ public class GafflingChecker extends UI {
 						(nameToCompClass.get(className).values()));
 			}
 		} catch (Exception e) {
-			Notification.show(e.getMessage(), Type.ERROR_MESSAGE);
+			Notification.show(
+					e.getClass().getSimpleName() + " " + e.getMessage(),
+					Type.ERROR_MESSAGE);
+			e.printStackTrace();
 		}
 	}
 

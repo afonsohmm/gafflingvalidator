@@ -12,6 +12,9 @@ App currently supports formats file that are commonly used in finnish competitio
 A version of the app is freely available online at:
 <http://matti.virtuallypreinstalled.com/gafflingvalidator/>
 
+Downloadable, clickable jar file available:
+https://dl.dropboxusercontent.com/u/4041822/gafflingvalidator-0.0.1-SNAPSHOT.jar
+
 App runs in server main memory only, thus it should be safe to use. Nothing is persisted to disk and even for server admin it would special require tricks and proper timing to use the data. Man-in-the-middle attack could theoretically be possible as the server uses plain http. If you can't trust your network, me or my server, see instructions below.
 
 Technical stuff
